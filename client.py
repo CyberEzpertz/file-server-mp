@@ -3,21 +3,30 @@ import os
 from datetime import datetime
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def parser(inp):
-        return inp.split(' ')
-
 class userConnection:
     def __init__(self):
         self.userName = None
         self.connected = False
         self.server_IP = None
         self.portNumber = None
-        
 
+    def check_error(self, connection=True, name=False):
+        error = None
+
+        if not connection or self.connected:
+            error = "Error: Not currently connected to a server."
+        elif not name or self.userName:
+            error = "Error: You are currently unregistered, please register before running any action."
+
+        if error:
+            print(error)
+
+        return error
+        
     # Fetches a file from the server using a file name
     def fetch_dir(self):
-        if not self.connected:
-            print("Not connected to any server.")
+        error = self.check_error(name=True)
+        if error:
             return
       
         s.sendall(b"/dir")
@@ -34,8 +43,8 @@ class userConnection:
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
-        if not self.connected:
-            print("Not connected to any server.")
+        error = self.check_error(name=True)
+        if error:
             return
     
         if not os.path.exists("filedir/" + filename):
@@ -100,7 +109,6 @@ class userConnection:
         else: 
             print("Error: Disconnection failed. Please connect to the server first.")
 
-
     # Connects with the server
     def server_connect(self):
         try:
@@ -123,38 +131,65 @@ class userConnection:
             /? - gets all input syntax commands shown above for reference
             """)
 
-
-# Ask for input while client is open
+def is_params_valid(expected, observed):
+    if expected != observed:
+        print("Error: Command parameters do not match or is not allowed.")
+        
+    return expected == observed
 
 try:
+    # Instantiate new client connection
     client = userConnection()
+
     while True:
         inp = input("> ")
-        print(inp)
-        wordList = parser(inp)
-        cmd = wordList[0]
+        parsed = inp.split(" ")
+        lenParams = len(parsed)
 
-        match cmd:
+        match parsed[0]:
             case '/join':
-                client.server_IP = wordList[1]
-                client.portNumber = int(wordList[2])
+                if not is_params_valid(3, lenParams):
+                    continue
+
+                client.server_IP = parsed[1]
+                client.portNumber = int(parsed[2])
                 client.server_connect()
             case '/leave':
+                if not is_params_valid(1, lenParams):
+                    continue
+
                 client.server_disconnect()
             case '/register':
-                client.register_alias(wordList[1])
+                if not is_params_valid(2, lenParams):
+                    continue
+
+                client.register_alias(parsed[1])
             case '/store':
-                client.send_file(wordList[1])
+                if not is_params_valid(2, lenParams):
+                    continue
+                
+                client.send_file(parsed[1])
             case '/dir':
+                if not is_params_valid(1, lenParams):
+                    continue
+
                 client.fetch_dir()
             case '/get':
-                client.fetch_file(wordList[1])
+                if not is_params_valid(2, lenParams):
+                    continue
+
+                client.fetch_file(parsed[1])
             case '/?':
+                if not is_params_valid(1, lenParams):
+                    continue
+
                 client.print_help()
             case '/exit':
                 print("See you on the flip side")
                 s.close()
                 break
+            case _:
+                print("Error: Command not found")
 
 except KeyboardInterrupt:
     print("Closing client, exiting.")
