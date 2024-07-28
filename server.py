@@ -32,13 +32,13 @@ def write_file(data):
     # Write into the file
     with open(filename, "w") as file:
         file.write(data.inb.decode())
-        
         print("Closing File...")
         file.close()
 
     # Reset the filename for the client
     if not data.inb:
         data.file = ""
+        data.inb = ""
 
 def handle_event(key, mask):
     sock = key.fileobj
@@ -82,7 +82,9 @@ def handle_event(key, mask):
 
     if (mask & selectors.EVENT_WRITE) and data.inb:
         try:
+            print(data.inb)
             write_file(data)
+            data.inb = ""
             sock.sendall(b"SUCCESS")
         except:
             sock.sendall(b"ERROR")
