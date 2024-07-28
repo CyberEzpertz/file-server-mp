@@ -1,6 +1,6 @@
 import socket
 import os
-import datetime
+from datetime import datetime
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def parser(inp):
@@ -17,7 +17,7 @@ class userConnection:
     # Fetches a file from the server using a file name
     def fetch_dir(self):
         if self.connected:
-            s.sendall(b"/dir".encode())
+            s.sendall(b"/dir")
             response = s.recv(4096).decode()
             if response == "SUCCESS":
                 pass
@@ -29,7 +29,7 @@ class userConnection:
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
         if self.connected:
-            s.sendall(b"/get {filename}".encode())
+            s.sendall(f"/get {filename}".encode())
             response = s.recv(4096).decode()
             if response.startswith(b"FILE"):
                 print("File received from Server: {filename}")
@@ -51,7 +51,7 @@ class userConnection:
                     response = s.recv(1024).decode()
                     if response == "SUCCESS":
                         time = datetime.now()
-                        print("{self.userName} {time}: Uploaded {filename}")
+                        print(f"{self.userName} {time}: Uploaded {filename}")
                     else:
                         print("Error: Unsuccessful in sending file")
             else:
@@ -62,11 +62,11 @@ class userConnection:
     # registers the User
     def register_alias(self, user):
         if self.connected:
-            s.sendall(b"/register {user}".encode())
+            s.sendall(f"/register {user}".encode())
             response = s.recv(1024).decode()
             if response == "SUCCESS":
                 self.userName = user
-                print("Welcome {self.userName}!")
+                print(f"Welcome {self.userName}!")
             else:
                 print("Error: Registration failed. Handle or alias already exists.")
         else:

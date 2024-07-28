@@ -5,9 +5,9 @@ import os
 
 def is_handle_taken(name):
     for key in sel.get_map().values():
-        if key.data.handle == name:
+        if key is not None and key.data is not None and key.data.handle == name:
             return True
-
+    
     return False
 
 def register_client(sock):
@@ -27,11 +27,13 @@ def register_client(sock):
     sel.register(conn, events, data=data)
 
 def write_file(data):
-    filename = data.file
+    filename = "filedir/" + data.file
 
     # Write into the file
     with open(filename, "w") as file:
         file.write(data.inb.decode())
+        
+        print("Closing File...")
         file.close()
 
     # Reset the filename for the client
