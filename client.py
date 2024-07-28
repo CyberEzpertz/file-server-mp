@@ -16,15 +16,19 @@ class userConnection:
 
     # Fetches a file from the server using a file name
     def fetch_dir(self):
-        if self.connected:
-            s.sendall(b"/dir")
-            response = s.recv(4096).decode()
-            if response == "SUCCESS":
-                pass
-            else:
-                pass
-        else:
+        if not self.connected:
             print("Not connected to any server.")
+            return
+      
+        s.sendall(b"/dir")
+        full_response = ""
+        while True:
+            response = s.recv(4096).decode()
+            full_response += response
+            if len(response) < 4096:
+                break
+            
+        print("Files on server:\n" + full_response)
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
