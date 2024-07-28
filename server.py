@@ -18,8 +18,28 @@ def register_client(sock):
     # Register it as part of the selector, which is basically the list of connections/sockets
     sel.register(conn, events, data=data)
 
-def handle_event():
-    pass
+def handle_event(key, mask):
+    sock = key.fileobj
+    data = key.data
+
+    if mask & selectors.EVENT_READ:
+        # Get data from the client
+        received = sock.recv(1024)
+
+        if received:
+            # Just echo for now
+            data.outb += received
+        else:
+            print(f"Closing connection from {data.addr}")
+            sel.unregister(sock)
+            sock.close()
+    
+    # Check if socket is ready to write to and there's data to be sent
+    if (mask & selectors.EVENT_WRITE) and data.outb:
+        print(f"Sending {data.outb!r} to {data.addr}")
+        sent_bytes = sock.send(data.outb)
+        data.outb = data.outb[sent_bytes:]
+
 # To enable multiple clients to connect to the server
 sel = selectors.DefaultSelector()
 
@@ -41,10 +61,12 @@ try:
     while True:
         events = sel.select(timeout=None)
         for key, mask in events:
+            # If data is None, we know this is from the listening socket because data=None
             if key.data is None:
                 register_client(key.fileobj)
             else:
-                handle_event()
+                handle_event(key, mask)
+
 except KeyboardInterrupt:
     print("Closing server, exiting.")
 finally:
