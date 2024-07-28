@@ -8,7 +8,6 @@ class userConnection:
     def __init__(self):
         self.userName = None
         self.connected = False
-        
         self.server_IP = None
         self.portNumber = None
         
@@ -18,11 +17,11 @@ class userConnection:
         pass
 
     # Fetches a file from the server using a file name
-    def fetch_file(filename):
+    def fetch_file(self, filename):
         pass
 
     # Sends a file to the server using the current client alias
-    def send_file(filename):
+    def send_file(self, filename):
         pass
 
     # registers the User
@@ -44,7 +43,7 @@ class userConnection:
 
 
     # Prints the commands and their functions
-    def print_help():
+    def print_help(self):
         print("""
             Available commands:
             /join <server_ip_add> <port> - creates a connection with the server
@@ -60,6 +59,7 @@ class userConnection:
 # Ask for input while client is open
 
 try:
+    client = userConnection()
     while True:
         inp = input("> ")
         print(inp)
@@ -68,19 +68,21 @@ try:
 
         match cmd:
             case '/join':
-                server_connect(wordList[1], wordList[2])
+                client.server_IP = wordList[1]
+                client.portNumber = int(wordList[2])
+                client.server_connect()
             case '/leave':
-                server_disconnect()
+                client.server_disconnect()
             case '/register':
-                register_alias()
+                client.register_alias(wordList[1])
             case '/store':
-                send_file(wordList[1])
+                client.send_file(wordList[1])
             case '/dir':
-                fetch_dir()
+                client.fetch_dir()
             case '/get':
-                fetch_file(wordList[1])
+                client.fetch_file(wordList[1])
             case '/?':
-                print_help()
+                client.print_help()
             case '/exit':
                 print("See you on the flip side")
                 s.close()
