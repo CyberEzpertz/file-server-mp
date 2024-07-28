@@ -1,6 +1,14 @@
 import socket
 import selectors
 import types
+import os
+
+def is_handle_taken(name):
+    for key in sel.get_map().values():
+        if key.data.handle == name:
+            return True
+
+    return False
 
 def register_client(sock):
     conn, addr = sock.accept()
@@ -10,7 +18,7 @@ def register_client(sock):
     conn.setblocking(False)
 
     # This line is to simply store the data associated with the client
-    data = types.SimpleNamespace(addr=addr, inb=b"", outb="", handle=None)
+    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, file=False)
 
     # This line is to check for read or write events from the client
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
@@ -27,8 +35,26 @@ def handle_event(key, mask):
         received = sock.recv(1024)
 
         if received:
-            # Just echo for now
-            data.outb += received
+            print("reading")
+            decoded = received.decode()
+            decoded = decoded.split(" ")
+
+            match decoded[0]:
+                case "/dir":
+                    files = os.listdir("./filedir")
+                    data.outb = str.encode("|".join(files))
+                case "/register":
+                    handle = decoded[1]
+                    if is_handle_taken(handle):
+                        data.outb = b"Error"
+                    else:
+                        data.handle = handle
+                        data.outb = b"Success"
+                case "/store":
+                    pass
+                case "/get":
+                    pass
+
         else:
             print(f"Closing connection from {data.addr}")
             sel.unregister(sock)
@@ -65,6 +91,7 @@ try:
         events = sel.select(timeout=10)
         if not events:
             idle = True
+            
             while idle:
                 user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
                 match user:
@@ -83,6 +110,7 @@ try:
                     register_client(key.fileobj)
                 else:
                     handle_event(key, mask)
+
 except KeyboardInterrupt:
     print("Closing server.")
 finally:
