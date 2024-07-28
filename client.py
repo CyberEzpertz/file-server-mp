@@ -1,4 +1,5 @@
 import socket
+s = socket.socket()
 
 def parser(inp):
     return inp.split(' ')
@@ -21,11 +22,13 @@ def register_alias():
 
 # Disconnects from the current server
 def server_disconnect():
-    pass
+    s.close()
+    s = socket.socket()
 
 # Connects with the server
-def server_connect():
-    pass
+def server_connect(host, port):
+    s.connect((host,port))
+
 
 # Prints the commands and their functions
 def print_help():
@@ -40,7 +43,6 @@ def print_help():
         /? - gets all input syntax commands shown above for reference
         """)
 
-s = socket.socket()
 
 # Ask for input while client is open
 while True:
