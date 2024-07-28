@@ -21,14 +21,16 @@ class userConnection:
             return
       
         s.sendall(b"/dir")
-        full_response = ""
+        response = ""
+        
         while True:
-            response = s.recv(4096).decode()
-            full_response += response
-            if len(response) < 4096:
+            chunk = s.recv(4096).decode()
+            response += chunk
+            if len(chunk) < 4096:
                 break
-            
-        print("Files on server:\n" + full_response)
+        
+        response = response.split("|")
+        print("Files on server:" + "\n- ".join(["", *response]))
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
