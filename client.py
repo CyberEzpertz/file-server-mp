@@ -28,17 +28,26 @@ class userConnection:
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
-        if self.connected:
-            s.sendall(f"/get {filename}".encode())
-            response = s.recv(4096).decode()
-            if response.startswith(b"FILE"):
-                print("File received from Server: {filename}")
-                with open(filename, 'wb') as file:
-                    file.write(response)
-            else:
-                print("Error: File not found in the server.")
-        else:
+        if not self.connected:
             print("Not connected to any server.")
+            return
+    
+        if not os.path.exists("filedir/" + filename):
+            print("Error: File not found in the server.")
+            return
+
+        s.sendall(f"/get {filename}".encode())
+        fileData = b""
+
+        while True:
+            chunk = s.recv(4096)
+            fileData += chunk
+            if len(chunk) < 4096:
+                break
+
+        print("File received from Server: {filename}")
+        with open(filename, 'wb') as file:
+            file.write(fileData)
 
     # Sends a file to the server using the current client alias
     def send_file(self, filename):
@@ -71,7 +80,6 @@ class userConnection:
                 print("Error: Registration failed. Handle or alias already exists.")
         else:
             print("Not connected to any server.")
-
 
     # Disconnects from the current server
     def server_disconnect(self):

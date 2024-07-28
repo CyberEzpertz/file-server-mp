@@ -12,7 +12,7 @@ def is_handle_taken(name):
 
 def register_client(sock):
     conn, addr = sock.accept()
-    print(f"Connection accepted from: {addr}")
+    print(f"[SOCK] Connection accepted from: {addr}")
 
     # This will allow for other socket operations to happen while a client is connected
     conn.setblocking(False)
@@ -32,13 +32,12 @@ def write_file(data):
     # Write into the file
     with open(filename, "w") as file:
         file.write(data.inb.decode())
-        print("Closing File...")
-        file.close()
 
-    # Reset the filename for the client
-    if not data.inb:
-        data.file = ""
-        data.inb = ""
+def read_file(filename):
+    with open(filename, "rb") as file:
+        data = file.read()
+    
+    return data
 
 def handle_event(key, mask):
     sock = key.fileobj
@@ -46,11 +45,11 @@ def handle_event(key, mask):
 
     if mask & selectors.EVENT_READ:
         # Get data from the client
-        received = sock.recv(1024)
+        received = sock.recv(4096)
         if received and data.file:
             data.inb += received
         elif received:
-            print("reading")
+            print(f"[READ] Reading from client address {data.addr}")
             parsed = received.decode().split(" ")
 
             match parsed[0]:
@@ -59,32 +58,38 @@ def handle_event(key, mask):
                     data.outb = str.encode("|".join(files))
                 case "/register":
                     handle = parsed[1]
+
                     if is_handle_taken(handle):
                         data.outb = b"ERROR"
                     else:
                         data.handle = handle
                         data.outb = b"SUCCESS"
+
                 case "/store":
                     data.file = parsed[1]
                 case "/get":
-                    
-                    pass
+                    filename = parsed[1]
+                    file_data = read_file(filename)
+                    data.outb = file_data
         else:
-            print(f"Closing connection from {data.addr}")
+            print(f"[SOCK] Closing connection from {data.addr}")
             sel.unregister(sock)
             sock.close()
     
     # Check if socket is ready to write to and there's data to be sent
     if (mask & selectors.EVENT_WRITE) and data.outb:
-        print(f"Sending {data.outb!r} to {data.addr}")
-        sent_bytes = sock.send(data.outb)
-        data.outb = data.outb[sent_bytes:]
+        print(f"[WRITE] Writing to client address {data.addr}")
+        sock.sendall(data.outb)
+        data.outb = ""
 
-    if (mask & selectors.EVENT_WRITE) and data.inb:
+    if data.file:
         try:
-            print(data.inb)
+            print(f"[READ] Writing file data for {data.file}")
             write_file(data)
+
+            # Reset the inbound data and the filename
             data.inb = ""
+            data.file = ""
             sock.sendall(b"SUCCESS")
         except:
             sock.sendall(b"ERROR")
@@ -119,13 +124,13 @@ try:
                 user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
                 match user:
                     case "quit":
-                        print("Closing server.")
+                        print("Closing server...")
                         sel.close()
                         break
                     case "listen":
                         idle = False
                     case _:
-                        print("Invalid input.")
+                        print("Invalid input. Please try again.")
         else:
             for key, mask in events:
                 # If data is None, we know this is from the listening socket because data=None
@@ -135,7 +140,7 @@ try:
                     handle_event(key, mask)
 
 except KeyboardInterrupt:
-    print("Closing server.")
+    print("Keyboard Interrupt Detected. Closing server...")
 finally:
     # Close all connections to the server and the server itself
     sel.close()
