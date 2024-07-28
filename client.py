@@ -1,11 +1,7 @@
 import socket
 
 def parser(inp):
-    wordList = inp.split(' ')
-    commandWord = wordList[0]
-    newWord = commandWord[1:]
-    wordList[0] = newWord
-    return wordList
+    return inp.split(' ')
 
 # Fetches a file from the server using a file name
 def fetch_dir():
@@ -52,21 +48,21 @@ while True:
     print(inp)
     wordList = parser(inp)
     commandWord = wordList[0]
-    if commandWord == 'join':
+    if commandWord == '/join':
         server_connect()
-    elif commandWord == 'leave':
+    elif commandWord == '/leave':
         server_disconnect()
-    elif commandWord == 'register':
+    elif commandWord == '/register':
         register_alias()
-    elif commandWord == 'store':
+    elif commandWord == '/store':
         send_file(wordList[1])
-    elif commandWord == 'dir':
+    elif commandWord == '/dir':
         fetch_dir()
-    elif commandWord == 'get':
+    elif commandWord == '/get':
         fetch_file(wordList[1])
-    elif commandWord == '?':
+    elif commandWord == '/?':
         print_help()
 
-    if wordList[0] == "exit":
+    if wordList[0] == "/exit":
         print("See you on the flip side")
         break
