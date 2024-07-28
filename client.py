@@ -1,5 +1,5 @@
 import socket
-s = socket.socket()
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def parser(inp):
         return inp.split(' ')
@@ -29,11 +29,13 @@ class userConnection:
     def register_alias(self, user):
         self.userName = user
 
+
     # Disconnects from the current server
     def server_disconnect(self):
         s.close()
         s = socket.socket()
         self.connected = False
+
 
     # Connects with the server
     def server_connect(self):
@@ -56,31 +58,36 @@ class userConnection:
 
 
 # Ask for input while client is open
-while True:
-    inp = input("> ")
-    client = userConnection();
-    wordList = parser(inp)
-    commandWord = wordList[0]
-    if commandWord == '/join':
-        client.server_IP = wordList[1]
-        client.port = int(wordList[2])
-        client.server_connect()
-    elif commandWord == '/leave':
-        client.server_disconnect()
-    elif commandWord == '/register':
-        client.register_alias(wordList[1])
-        client.userName = wordList[1]
-    elif commandWord == '/store':
-        fileName = wordList[1]
-        client.send_file(fileName)
-    elif commandWord == '/dir':
-        client.fetch_dir()
-    elif commandWord == '/get':
-        fileName = wordList[1]
-        client.fetch_file(fileName)
-    elif commandWord == '/?':
-        client.print_help()
 
-    if wordList[0] == "/exit":
-        print("See you on the flip side")
-        break
+try:
+    while True:
+        inp = input("> ")
+        print(inp)
+        wordList = parser(inp)
+        cmd = wordList[0]
+
+        match cmd:
+            case '/join':
+                server_connect(wordList[1], wordList[2])
+            case '/leave':
+                server_disconnect()
+            case '/register':
+                register_alias()
+            case '/store':
+                send_file(wordList[1])
+            case '/dir':
+                fetch_dir()
+            case '/get':
+                fetch_file(wordList[1])
+            case '/?':
+                print_help()
+            case '/exit':
+                print("See you on the flip side")
+                s.close()
+                break
+
+except KeyboardInterrupt:
+    print("Closing client, exiting.")
+finally:
+    # Close all connections to the server and the server itself
+    s.close()
