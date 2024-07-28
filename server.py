@@ -1,16 +1,24 @@
 import socket
 import selectors
 import types
+import os
+
+def is_handle_taken(name):
+    for key in sel.get_map().values():
+        if key is not None and key.data is not None and key.data.handle == name:
+            return True
+    
+    return False
 
 def register_client(sock):
     conn, addr = sock.accept()
-    print(f"Connection accepted from: {addr}")
+    print(f"[SOCK] Connection accepted from: {addr}")
 
     # This will allow for other socket operations to happen while a client is connected
     conn.setblocking(False)
 
     # This line is to simply store the data associated with the client
-    data = types.SimpleNamespace(addr=addr, inb=b"", outb="", handle=None)
+    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, file="")
 
     # This line is to check for read or write events from the client
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
@@ -18,27 +26,73 @@ def register_client(sock):
     # Register it as part of the selector, which is basically the list of connections/sockets
     sel.register(conn, events, data=data)
 
+def write_file(data):
+    filename = "filedir/" + data.file
+
+    # Write into the file
+    with open(filename, "w") as file:
+        file.write(data.inb.decode())
+
+def read_file(filename):
+    with open(filename, "rb") as file:
+        data = file.read()
+    
+    return data
+
 def handle_event(key, mask):
     sock = key.fileobj
     data = key.data
 
     if mask & selectors.EVENT_READ:
         # Get data from the client
-        received = sock.recv(1024)
+        received = sock.recv(4096)
+        if received and data.file:
+            data.inb += received
+        elif received:
+            print(f"[READ] Reading from client address {data.addr}")
+            parsed = received.decode().split(" ")
 
-        if received:
-            # Just echo for now
-            data.outb += received
+            match parsed[0]:
+                case "/dir":
+                    files = os.listdir("./filedir")
+                    data.outb = str.encode("|".join(files))
+                case "/register":
+                    handle = parsed[1]
+
+                    if is_handle_taken(handle):
+                        data.outb = b"ERROR"
+                    else:
+                        data.handle = handle
+                        data.outb = b"SUCCESS"
+
+                case "/store":
+                    data.file = parsed[1]
+                case "/get":
+                    filename = parsed[1]
+                    file_data = read_file(filename)
+                    data.outb = file_data
         else:
-            print(f"Closing connection from {data.addr}")
+            print(f"[SOCK] Closing connection from {data.addr}")
             sel.unregister(sock)
             sock.close()
     
     # Check if socket is ready to write to and there's data to be sent
     if (mask & selectors.EVENT_WRITE) and data.outb:
-        print(f"Sending {data.outb!r} to {data.addr}")
-        sent_bytes = sock.send(data.outb)
-        data.outb = data.outb[sent_bytes:]
+        print(f"[WRITE] Writing to client address {data.addr}")
+        sock.sendall(data.outb)
+        data.outb = ""
+
+    if data.file:
+        try:
+            print(f"[READ] Writing file data for {data.file}")
+            write_file(data)
+
+            # Reset the inbound data and the filename
+            data.inb = ""
+            data.file = ""
+            sock.sendall(b"SUCCESS")
+        except:
+            sock.sendall(b"ERROR")
 
 # To enable multiple clients to connect to the server
 sel = selectors.DefaultSelector()
@@ -65,17 +119,18 @@ try:
         events = sel.select(timeout=10)
         if not events:
             idle = True
+            
             while idle:
                 user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
                 match user:
                     case "quit":
-                        print("Closing server.")
+                        print("Closing server...")
                         sel.close()
                         break
                     case "listen":
                         idle = False
                     case _:
-                        print("Invalid input.")
+                        print("Invalid input. Please try again.")
         else:
             for key, mask in events:
                 # If data is None, we know this is from the listening socket because data=None
@@ -83,8 +138,9 @@ try:
                     register_client(key.fileobj)
                 else:
                     handle_event(key, mask)
+
 except KeyboardInterrupt:
-    print("Closing server.")
+    print("Keyboard Interrupt Detected. Closing server...")
 finally:
     # Close all connections to the server and the server itself
     sel.close()
