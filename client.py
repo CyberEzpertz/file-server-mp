@@ -1,4 +1,6 @@
 import socket
+import os
+import datetime
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def parser(inp):
@@ -14,19 +16,61 @@ class userConnection:
 
     # Fetches a file from the server using a file name
     def fetch_dir(self):
-        pass
+        if self.connected:
+            s.sendall(b"/dir".encode())
+            response = s.recv(4096).decode()
+            if response == "SUCCESS":
+                pass
+            else:
+                pass
+        else:
+            print("Not connected to any server.")
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
-        pass
+        if self.connected:
+            s.sendall(b"/get {filename}".encode())
+            response = s.recv(4096).decode()
+            if response.startswith(b"FILE"):
+                print("File received from Server: {filename}")
+                with open(filename, 'wb') as file:
+                    file.write(response)
+            else:
+                print("Error: File not found in the server.")
+        else:
+            print("Not connected to any server.")
 
     # Sends a file to the server using the current client alias
     def send_file(self, filename):
-        pass
+        if self.connected:
+            if os.path.exists(filename):
+                with open(filename, 'rb') as file:
+                    fileData = file.read()
+                    s.sendall(f"/store {filename}".encode())
+                    s.sendall(fileData)
+                    response = s.recv(1024).decode()
+                    if response == "SUCCESS":
+                        time = datetime.now()
+                        print("{self.userName} {time}: Uploaded {filename}")
+                    else:
+                        print("Error: Unsuccessful in sending file")
+            else:
+                print("Error: File not found.")
+        else:
+            print("Not connected to any server.")
 
     # registers the User
     def register_alias(self, user):
-        self.userName = user
+        if self.connected:
+            s.sendall(b"/register {user}".encode())
+            response = s.recv(1024).decode()
+            if response == "SUCCESS":
+                self.userName = user
+                print("Welcome {self.userName}!")
+            else:
+                print("Error: Registration failed. Handle or alias already exists.")
+        else:
+            print("Not connected to any server.")
 
 
     # Disconnects from the current server
