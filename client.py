@@ -1,5 +1,7 @@
 import socket
 
+s = socket.socket()
+
 # Fetches a file from the server using a file name
 def fetch_dir():
     pass
@@ -18,17 +20,18 @@ def register_alias():
 
 # Disconnects from the current server
 def server_disconnect():
-    pass
+    s.close()
+    s = socket.socket()
 
 # Connects with the server
-def server_connect():
-    pass
+def server_connect(host, port):
+    s.connect((host,port))
+
 
 # Prints the commands and their functions
 def print_help():
     pass
 
-s = socket.socket()
 
 # Ask for input while client is open
 while True:
