@@ -67,8 +67,6 @@ try:
         cmd = wordList[0]
 
         match cmd:
-            case '/send':
-                s.sendall(b"/dirtestestestestestsetstestests")
             case '/join':
                 client.server_IP = wordList[1]
                 client.portNumber = int(wordList[2])
