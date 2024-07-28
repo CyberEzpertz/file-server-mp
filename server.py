@@ -51,24 +51,40 @@ host, port  = socket.gethostname(), 12345
 s.bind((host, port))
 s.listen()
 s.setblocking(False)
-print(f"Server listening on: {host}:{port}")
 
 # Add the listening socket to the selectors, which is the list of sockets
 sel.register(s, selectors.EVENT_READ, data=None)
 
 # Loop while the server is on
 try:
-    while True:
-        events = sel.select(timeout=None)
-        for key, mask in events:
-            # If data is None, we know this is from the listening socket because data=None
-            if key.data is None:
-                register_client(key.fileobj)
-            else:
-                handle_event(key, mask)
+    idle = False
+    print(f"Server listening on: {host}:{port}")
 
+    while not idle:
+        # Listen for 60 seconds only
+        events = sel.select(timeout=10)
+        if not events:
+            idle = True
+            while idle:
+                user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
+                match user:
+                    case "quit":
+                        print("Closing server.")
+                        sel.close()
+                        break
+                    case "listen":
+                        idle = False
+                    case _:
+                        print("Invalid input.")
+        else:
+            for key, mask in events:
+                # If data is None, we know this is from the listening socket because data=None
+                if key.data is None:
+                    register_client(key.fileobj)
+                else:
+                    handle_event(key, mask)
 except KeyboardInterrupt:
-    print("Closing server, exiting.")
+    print("Closing server.")
 finally:
     # Close all connections to the server and the server itself
     sel.close()
