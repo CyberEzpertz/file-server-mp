@@ -31,9 +31,13 @@ class userConnection:
 
     # Disconnects from the current server
     def server_disconnect(self):
-        s.close()
-        s = socket.socket()
-        self.connected = False
+        try:
+            s.close()
+            s = socket.socket()
+            self.connected = False
+            print("Connection closed. Thank you!")
+        except socket.error as e:
+            print("Error: Disconnection failed. Please connect to the server first.")
 
 
     # Connects with the server
