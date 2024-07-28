@@ -1,7 +1,6 @@
 import socket
 import os
 from datetime import datetime
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 class userConnection:
     def __init__(self):
@@ -9,6 +8,8 @@ class userConnection:
         self.connected = False
         self.server_IP = None
         self.portNumber = None
+        self.sock = None
+
 
     def check_error(self, connection=True, name=False):
         error = None
@@ -29,11 +30,11 @@ class userConnection:
         if error:
             return
       
-        s.sendall(b"/dir")
+        self.sock.sendall(b"/dir")
         response = ""
         
         while True:
-            chunk = s.recv(4096).decode()
+            chunk = self.sock.recv(4096).decode()
             response += chunk
             if len(chunk) < 4096:
                 break
@@ -51,11 +52,11 @@ class userConnection:
             print("Error: File not found in the server.")
             return
 
-        s.sendall(f"/get {filename}".encode())
+        self.sock.sendall(f"/get {filename}".encode())
         fileData = b""
 
         while True:
-            chunk = s.recv(4096)
+            chunk = self.sock.recv(4096)
             fileData += chunk
             if len(chunk) < 4096:
                 break
@@ -76,9 +77,9 @@ class userConnection:
 
         with open(filename, 'rb') as file:
             fileData = file.read()
-            s.sendall(f"/store {filename}".encode())
-            s.sendall(fileData)
-            response = s.recv(1024).decode()
+            self.sock.sendall(f"/store {filename}".encode())
+            self.sock.sendall(fileData)
+            response = self.sock.recv(1024).decode()
 
             if response == "SUCCESS":
                 time = datetime.now()
@@ -92,8 +93,8 @@ class userConnection:
         if error:
             return
         
-        s.sendall(f"/register {user}".encode())
-        response = s.recv(1024).decode()
+        self.sock.sendall(f"/register {user}".encode())
+        response = self.sock.recv(1024).decode()
 
         if response == "SUCCESS":
             self.userName = user
@@ -102,23 +103,27 @@ class userConnection:
             print("Error: Registration failed. Handle or alias already exists.")
 
     # Disconnects from the current server
-    def server_disconnect(self):
-        error = self.check_error()
-        if error:
+    def disconnect(self):
+        if not self.connected:
+            print("Error: Disconnection failed. Please connect to the server first.")
             return
         
         try:
-            s.close()
-            s = socket.socket()
+            self.sock.close()
             self.connected = False
             print("Connection closed. Thank you!")
         except socket.error as e:
             print("Error disconnecting from server.")
 
     # Connects with the server
-    def server_connect(self):
+    def connect(self):
+        if self.connected:
+            print("Error: Already connected to a server. Disconnect first to join a new server.")
+            return
+        
         try:
-            s.connect((self.server_IP, self.portNumber))
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.server_IP, self.portNumber))
             self.connected = True
             print("Connection to the File Exchange Server is successful!")
         except socket.error as e:
@@ -154,17 +159,20 @@ try:
 
         match parsed[0]:
             case '/join':
+                if client.connected:
+                    print("Error: You are already connected to a server. Disconnect first to join another one.")
+                    continue
                 if not is_params_valid(3, lenParams):
                     continue
 
                 client.server_IP = parsed[1]
                 client.portNumber = int(parsed[2])
-                client.server_connect()
+                client.connect()
             case '/leave':
                 if not is_params_valid(1, lenParams):
                     continue
 
-                client.server_disconnect()
+                client.disconnect()
             case '/register':
                 if not is_params_valid(2, lenParams):
                     continue
@@ -192,7 +200,7 @@ try:
                 client.print_help()
             case '/exit':
                 print("See you on the flip side")
-                s.close()
+                client.disconnect()
                 break
             case _:
                 print("Error: Command not found")
@@ -201,4 +209,4 @@ except KeyboardInterrupt:
     print("Closing client, exiting.")
 finally:
     # Close all connections to the server and the server itself
-    s.close()
+    client.disconnect()
