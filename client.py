@@ -2,50 +2,63 @@ import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def parser(inp):
-    return inp.split(' ')
+        return inp.split(' ')
 
-# Fetches a file from the server using a file name
-def fetch_dir():
-    pass
+class userConnection:
+    def __init__(self):
+        self.userName = None
+        self.connected = False
+        
+        self.server_IP = None
+        self.portNumber = None
+        
 
-# Fetches a file from the server using a file name
-def fetch_file(filename):
-    pass
+    # Fetches a file from the server using a file name
+    def fetch_dir(self):
+        pass
 
-# Sends a file to the server using the current client alias
-def send_file(filename):
-    pass
+    # Fetches a file from the server using a file name
+    def fetch_file(filename):
+        pass
 
-# Disconnects from the current server
-def register_alias():
-    pass
+    # Sends a file to the server using the current client alias
+    def send_file(filename):
+        pass
 
-# Disconnects from the current server
-def server_disconnect():
-    s.close()
-    s = socket.socket()
-
-# Connects with the server
-def server_connect(host, port):
-    s.connect((host, int(port)))
-    print(f"Succesfully connected to {host}:{port}!")
+    # registers the User
+    def register_alias(self, user):
+        self.userName = user
 
 
-# Prints the commands and their functions
-def print_help():
-    print("""
-        Available commands:
-        /join <server_ip_add> <port> - creates a connection with the server
-        /leave - leaves the connection with the server
-        /register <handle> - registers a user
-        /store <filename> - send a file to the server
-        /dir - requests a list of file names stored with the server
-        /get <filename> - requests the specific file from the directory of the server
-        /? - gets all input syntax commands shown above for reference
-        """)
+    # Disconnects from the current server
+    def server_disconnect(self):
+        s.close()
+        s = socket.socket()
+        self.connected = False
+
+
+    # Connects with the server
+    def server_connect(self):
+        s.connect((self.server_IP, self.portNumber))
+        self.connected = True
+
+
+    # Prints the commands and their functions
+    def print_help():
+        print("""
+            Available commands:
+            /join <server_ip_add> <port> - creates a connection with the server
+            /leave - leaves the connection with the server
+            /register <handle> - registers a user
+            /store <filename> - send a file to the server
+            /dir - requests a list of file names stored with the server
+            /get <filename> - requests the specific file from the directory of the server
+            /? - gets all input syntax commands shown above for reference
+            """)
 
 
 # Ask for input while client is open
+
 try:
     while True:
         inp = input("> ")
