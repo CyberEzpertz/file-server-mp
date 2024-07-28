@@ -18,13 +18,25 @@ def register_client(sock):
     conn.setblocking(False)
 
     # This line is to simply store the data associated with the client
-    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, file=False)
+    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, file="")
 
     # This line is to check for read or write events from the client
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
 
     # Register it as part of the selector, which is basically the list of connections/sockets
     sel.register(conn, events, data=data)
+
+def write_file(data):
+    filename = data.file
+
+    # Write into the file
+    with open(filename, "w") as file:
+        file.write(data.inb.decode())
+        file.close()
+
+    # Reset the filename for the client
+    if not data.inb:
+        data.file = ""
 
 def handle_event(key, mask):
     sock = key.fileobj
@@ -33,28 +45,28 @@ def handle_event(key, mask):
     if mask & selectors.EVENT_READ:
         # Get data from the client
         received = sock.recv(1024)
-
-        if received:
+        if received and data.file:
+            data.inb += received
+        elif received:
             print("reading")
-            decoded = received.decode()
-            decoded = decoded.split(" ")
+            parsed = received.decode().split(" ")
 
-            match decoded[0]:
+            match parsed[0]:
                 case "/dir":
                     files = os.listdir("./filedir")
                     data.outb = str.encode("|".join(files))
                 case "/register":
-                    handle = decoded[1]
+                    handle = parsed[1]
                     if is_handle_taken(handle):
-                        data.outb = b"Error"
+                        data.outb = b"ERROR"
                     else:
                         data.handle = handle
-                        data.outb = b"Success"
+                        data.outb = b"SUCCESS"
                 case "/store":
-                    pass
+                    data.file = parsed[1]
                 case "/get":
+                    
                     pass
-
         else:
             print(f"Closing connection from {data.addr}")
             sel.unregister(sock)
@@ -65,6 +77,13 @@ def handle_event(key, mask):
         print(f"Sending {data.outb!r} to {data.addr}")
         sent_bytes = sock.send(data.outb)
         data.outb = data.outb[sent_bytes:]
+
+    if (mask & selectors.EVENT_WRITE) and data.inb:
+        try:
+            write_file(data)
+            sock.sendall(b"SUCCESS")
+        except:
+            sock.sendall(b"ERROR")
 
 # To enable multiple clients to connect to the server
 sel = selectors.DefaultSelector()
