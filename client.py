@@ -13,9 +13,9 @@ class userConnection:
     def check_error(self, connection=True, name=False):
         error = None
 
-        if not connection or self.connected:
+        if connection and not self.connected:
             error = "Error: Not currently connected to a server."
-        elif not name or self.userName:
+        elif name and not self.userName:
             error = "Error: You are currently unregistered, please register before running any action."
 
         if error:
@@ -66,48 +66,54 @@ class userConnection:
 
     # Sends a file to the server using the current client alias
     def send_file(self, filename):
-        if self.connected:
-            if os.path.exists(filename):
-                with open(filename, 'rb') as file:
-                    fileData = file.read()
-                    s.sendall(f"/store {filename}".encode())
-                    s.sendall(fileData)
-                    response = s.recv(1024).decode()
-                    if response == "SUCCESS":
-                        time = datetime.now()
-                        print(f"{self.userName} {time}: Uploaded {filename}")
-                    else:
-                        print("Error: Unsuccessful in sending file")
+        error = self.check_error(name=True)
+        if error:
+            return
+    
+        if not os.path.exists(filename):
+            print("Error: File not found.")
+            return
+
+        with open(filename, 'rb') as file:
+            fileData = file.read()
+            s.sendall(f"/store {filename}".encode())
+            s.sendall(fileData)
+            response = s.recv(1024).decode()
+
+            if response == "SUCCESS":
+                time = datetime.now()
+                print(f"{self.userName} {time}: Uploaded {filename}")
             else:
-                print("Error: File not found.")
-        else:
-            print("Not connected to any server.")
+                print("Error: Unsuccessful in sending file")
 
     # registers the User
     def register_alias(self, user):
-        if self.connected:
-            s.sendall(f"/register {user}".encode())
-            response = s.recv(1024).decode()
-            if response == "SUCCESS":
-                self.userName = user
-                print(f"Welcome {self.userName}!")
-            else:
-                print("Error: Registration failed. Handle or alias already exists.")
+        error = self.check_error()
+        if error:
+            return
+        
+        s.sendall(f"/register {user}".encode())
+        response = s.recv(1024).decode()
+
+        if response == "SUCCESS":
+            self.userName = user
+            print(f"Welcome {self.userName}!")
         else:
-            print("Not connected to any server.")
+            print("Error: Registration failed. Handle or alias already exists.")
 
     # Disconnects from the current server
     def server_disconnect(self):
-        if self.connected:
-            try:
-                s.close()
-                s = socket.socket()
-                self.connected = False
-                print("Connection closed. Thank you!")
-            except socket.error as e:
-                print("Error disconnecting from server.")
-        else: 
-            print("Error: Disconnection failed. Please connect to the server first.")
+        error = self.check_error()
+        if error:
+            return
+        
+        try:
+            s.close()
+            s = socket.socket()
+            self.connected = False
+            print("Connection closed. Thank you!")
+        except socket.error as e:
+            print("Error disconnecting from server.")
 
     # Connects with the server
     def server_connect(self):
