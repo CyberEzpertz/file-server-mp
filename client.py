@@ -1,5 +1,5 @@
 import socket
-s = socket.socket()
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def parser(inp):
     return inp.split(' ')
@@ -27,7 +27,8 @@ def server_disconnect():
 
 # Connects with the server
 def server_connect(host, port):
-    s.connect((host,port))
+    s.connect((host, int(port)))
+    print(f"Succesfully connected to {host}:{port}!")
 
 
 # Prints the commands and their functions
@@ -45,26 +46,35 @@ def print_help():
 
 
 # Ask for input while client is open
-while True:
-    inp = input("> ")
-    print(inp)
-    wordList = parser(inp)
-    commandWord = wordList[0]
-    if commandWord == '/join':
-        server_connect()
-    elif commandWord == '/leave':
-        server_disconnect()
-    elif commandWord == '/register':
-        register_alias()
-    elif commandWord == '/store':
-        send_file(wordList[1])
-    elif commandWord == '/dir':
-        fetch_dir()
-    elif commandWord == '/get':
-        fetch_file(wordList[1])
-    elif commandWord == '/?':
-        print_help()
+try:
+    while True:
+        inp = input("> ")
+        print(inp)
+        wordList = parser(inp)
+        cmd = wordList[0]
 
-    if wordList[0] == "/exit":
-        print("See you on the flip side")
-        break
+        match cmd:
+            case '/join':
+                server_connect(wordList[1], wordList[2])
+            case '/leave':
+                server_disconnect()
+            case '/register':
+                register_alias()
+            case '/store':
+                send_file(wordList[1])
+            case '/dir':
+                fetch_dir()
+            case '/get':
+                fetch_file(wordList[1])
+            case '/?':
+                print_help()
+            case '/exit':
+                print("See you on the flip side")
+                s.close()
+                break
+
+except KeyboardInterrupt:
+    print("Closing client, exiting.")
+finally:
+    # Close all connections to the server and the server itself
+    s.close()
