@@ -31,16 +31,26 @@ class userConnection:
 
     # Disconnects from the current server
     def server_disconnect(self):
-        s.close()
-        s = socket.socket()
-        self.connected = False
+        if self.connected:
+            try:
+                s.close()
+                s = socket.socket()
+                self.connected = False
+                print("Connection closed. Thank you!")
+            except socket.error as e:
+                print("Error disconnecting from server.")
+        else: 
+            print("Error: Disconnection failed. Please connect to the server first.")
 
 
     # Connects with the server
     def server_connect(self):
-        s.connect((self.server_IP, self.portNumber))
-        self.connected = True
-
+        try:
+            s.connect((self.server_IP, self.portNumber))
+            self.connected = True
+            print("Connection to the File Exchange Server is successful!")
+        except socket.error as e:
+            print("Error: Connection to the Server has failed! Please check IP Address and Port Number. ")
 
     # Prints the commands and their functions
     def print_help(self):
