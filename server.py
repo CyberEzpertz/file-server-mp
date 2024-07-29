@@ -3,12 +3,26 @@ import selectors
 import types
 import os
 
+
 def is_handle_taken(name):
     for key in sel.get_map().values():
         if key is not None and key.data is not None and key.data.handle == name:
             return True
     
     return False
+
+def write_file(data):
+    filename = "filedir/" + data.filename
+
+    # Write into the file
+    with open(filename, "w") as file:
+        file.write(data.inb.decode())
+
+def read_file(filename):
+    with open("filedir/" + filename, "rb") as file:
+        data = file.read()
+    
+    return data
 
 def register_client(sock):
     conn, addr = sock.accept()
@@ -18,26 +32,13 @@ def register_client(sock):
     conn.setblocking(False)
 
     # This line is to simply store the data associated with the client
-    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, file="")
+    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"", handle=None, filename="")
 
     # This line is to check for read or write events from the client
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
 
     # Register it as part of the selector, which is basically the list of connections/sockets
     sel.register(conn, events, data=data)
-
-def write_file(data):
-    filename = "filedir/" + data.file
-
-    # Write into the file
-    with open(filename, "w") as file:
-        file.write(data.inb.decode())
-
-def read_file(filename):
-    with open(filename, "rb") as file:
-        data = file.read()
-    
-    return data
 
 def handle_event(key, mask):
     sock = key.fileobj
@@ -46,10 +47,24 @@ def handle_event(key, mask):
     if mask & selectors.EVENT_READ:
         # Get data from the client
         received = sock.recv(4096)
-        if received and data.file:
+
+        if received and data.filename:
             data.inb += received
+
+            if len(received) < 4096:
+                try:
+                    print(f"[WRITE] Writing file data for {data.filename}")
+                    write_file(data)
+
+                    # Reset the inbound data and the filename
+                    data.inb = b""
+                    data.filename = ""
+                    sock.sendall(b"SUCCESS")
+                except:
+                    sock.sendall(b"ERROR")
+
         elif received:
-            print(f"[READ] Reading from client address {data.addr}")
+            print(f"[READ] Reading from client {data.addr}")
             parsed = received.decode().split(" ")
 
             match parsed[0]:
@@ -66,7 +81,9 @@ def handle_event(key, mask):
                         data.outb = b"SUCCESS"
 
                 case "/store":
-                    data.file = parsed[1]
+                    data.filename = parsed[1]
+                    print(f"Store: {parsed[1]}")
+
                 case "/get":
                     filename = parsed[1]
                     file_data = read_file(filename)
@@ -78,21 +95,10 @@ def handle_event(key, mask):
     
     # Check if socket is ready to write to and there's data to be sent
     if (mask & selectors.EVENT_WRITE) and data.outb:
-        print(f"[WRITE] Writing to client address {data.addr}")
+        print(f"[WRITE] Writing to client {data.addr}")
         sock.sendall(data.outb)
         data.outb = ""
 
-    if data.file:
-        try:
-            print(f"[READ] Writing file data for {data.file}")
-            write_file(data)
-
-            # Reset the inbound data and the filename
-            data.inb = ""
-            data.file = ""
-            sock.sendall(b"SUCCESS")
-        except:
-            sock.sendall(b"ERROR")
 
 # To enable multiple clients to connect to the server
 sel = selectors.DefaultSelector()
@@ -115,8 +121,10 @@ try:
     print(f"Server listening on: {host}:{port}")
 
     while not idle:
-        # Listen for 60 seconds only
-        events = sel.select(timeout=10)
+        # Listen for events until timeout only
+        events = sel.select(timeout=15)
+        
+        # If timeout occurs, server goes idle
         if not events:
             idle = True
             
@@ -132,6 +140,7 @@ try:
                     case _:
                         print("Invalid input. Please try again.")
         else:
+            # For every event, get the socket and the type of event, i.e. the mask
             for key, mask in events:
                 # If data is None, we know this is from the listening socket because data=None
                 if key.data is None:
