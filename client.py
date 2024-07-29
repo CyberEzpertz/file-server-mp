@@ -117,7 +117,9 @@ class userConnection:
             return
         
         try:
+            self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
+            self.userName = None
             self.connected = False
             print("Connection closed. Thank you!")
         except socket.error as e:
@@ -182,7 +184,6 @@ def is_params_valid(expected, observed):
 
 # Instantiate new client connection
 client = userConnection()
-sel = selectors.DefaultSelector()
 
 # We need this for the multithreading to exit properly
 exitFlag = False
@@ -190,21 +191,6 @@ exitFlag = False
 def command_func():
     while not exitFlag:
         try:
-            # if client.chat:
-            #     sel.register(client.sock, selectors.EVENT_READ, data=None)
-            #     sel.register(sys.stdin)
-            #     print("Listening to chatroom right now. Press enter to input a whisper, broadcast, or a quit command.")
-                
-            # while client.chat:
-            #     events = sel.select()
-            #     for key, _ in events:
-            #         if key.fileobj == client.sock:
-            #             received = key.fileobj.recv(4096)
-            #             print(received)
-            #         else:
-            #             # put chat commands here
-            #             pass
-
             inp = input("> ")
             parsed = inp.split(" ")
             lenParams = len(parsed)
@@ -257,7 +243,10 @@ def command_func():
                 case '/broadcast':
                     client.broadcast(parsed[1])
                 case '/whisper':
-                    client.whisper(parsed[1], parsed[2])
+                    if parsed[1] == client.userName:
+                        print("You can't whisper to yourself!")
+                    else:
+                        client.whisper(parsed[1], parsed[2])
                 case _:
                     print("Error: Command not found")
         except Exception as e:

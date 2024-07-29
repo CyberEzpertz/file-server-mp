@@ -100,9 +100,6 @@ def handle_event(key, mask):
                     file_data = read_file(filename)
                     data.outb = file_data
 
-                # case "/chat":
-                #     data.chat = not data.chat
-
                 case "/whisper":
                     username = parsed[1]
                     message = " ".join(parsed[2:])
@@ -118,8 +115,8 @@ def handle_event(key, mask):
                     message = parsed[1]
 
                     for val in sel.get_map().values():
-                        if val.data:
-                            val.fileobj.sendall(f"<{data.handle}> Broadcasted: {message}".encode())
+                        if val.data and val.data.handle != data.handle:
+                            val.fileobj.sendall(f"<BROADCAST> {data.handle}: {message}".encode())
         else:
             print(f"[SOCK] Closing connection from {data.addr}")
             sel.unregister(sock)
@@ -168,8 +165,6 @@ while True:
         print("Keyboard Interrupt Detected. Closing server...")
         sel.close()
         break
-    except ConnectionResetError:
+    except ConnectionResetError as e:
+        print(e)
         continue
-        
-
-sel.close()
