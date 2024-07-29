@@ -19,7 +19,7 @@ def write_file(data):
         file.write(data.inb.decode())
 
 def read_file(filename):
-    with open(filename, "rb") as file:
+    with open("filedir/" + filename, "rb") as file:
         data = file.read()
     
     return data
@@ -49,7 +49,6 @@ def handle_event(key, mask):
         received = sock.recv(4096)
 
         if received and data.filename:
-            print("HERE")
             data.inb += received
 
             if len(received) < 4096:
@@ -65,7 +64,7 @@ def handle_event(key, mask):
                     sock.sendall(b"ERROR")
 
         elif received:
-            print(f"[READ] Reading from client address {data.addr}")
+            print(f"[READ] Reading from client {data.addr}")
             parsed = received.decode().split(" ")
 
             match parsed[0]:
@@ -96,7 +95,7 @@ def handle_event(key, mask):
     
     # Check if socket is ready to write to and there's data to be sent
     if (mask & selectors.EVENT_WRITE) and data.outb:
-        print(f"[WRITE] Writing to client address {data.addr}")
+        print(f"[WRITE] Writing to client {data.addr}")
         sock.sendall(data.outb)
         data.outb = ""
 

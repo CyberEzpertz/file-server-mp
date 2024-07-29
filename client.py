@@ -10,15 +10,10 @@ class userConnection:
         self.portNumber = None
         self.sock = None
 
-
     def check_error(self, connection=True, name=False):
         error = None
         if connection and not self.connected:
             error = "Error: Not currently connected to a server."
-        elif len(self.sock.recv(1024)) == 0:
-            error = "Error: Server Connection has been severed. Try reconnecting or opening the server again."
-            self.connected = False
-            self.sock.close()
         elif name and not self.userName:
             error = "Error: You are currently unregistered, please register before running any action."
 
@@ -152,15 +147,15 @@ def is_params_valid(expected, observed):
         
     return expected == observed
 
-try:
-    # Instantiate new client connection
-    client = userConnection()
+# Instantiate new client connection
+client = userConnection()
 
-    while True:
+while True:
+    try:
         inp = input("> ")
         parsed = inp.split(" ")
         lenParams = len(parsed)
-
+        
         match parsed[0]:
             case '/join':
                 if client.connected:
@@ -208,9 +203,10 @@ try:
                 break
             case _:
                 print("Error: Command not found")
-
-except KeyboardInterrupt:
-    print("Closing client, exiting.")
-finally:
-    # Close all connections to the server and the server itself
-    client.disconnect()
+    except KeyboardInterrupt:
+        print("Closing client...")
+        client.disconnect()
+        break
+    except Exception as e:
+        print("Error: Something went wrong, disconnecting any active connection.")
+        client.disconnect()
