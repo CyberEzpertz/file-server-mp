@@ -15,8 +15,8 @@ def write_file(data):
     filename = "filedir/" + data.filename
 
     # Write into the file
-    with open(filename, "w") as file:
-        file.write(data.inb.decode())
+    with open(filename, "wb") as file:
+        file.write(data.inb)
 
 def read_file(filename):
     with open("filedir/" + filename, "rb") as file:
