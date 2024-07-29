@@ -15,14 +15,21 @@ def write_file(data):
     filename = "filedir/" + data.filename
 
     # Write into the file
-    with open(filename, "w") as file:
-        file.write(data.inb.decode())
+    with open(filename, "wb") as file:
+        file.write(data.inb)
 
 def read_file(filename):
     with open("filedir/" + filename, "rb") as file:
         data = file.read()
     
     return data
+
+def find_user(username):
+    for val in sel.get_map().values():
+        if val is not None and val.data is not None and val.data.handle == username:
+            return val
+    
+    return None
 
 def register_client(sock):
     conn, addr = sock.accept()
@@ -70,7 +77,10 @@ def handle_event(key, mask):
             match parsed[0]:
                 case "/dir":
                     files = os.listdir("./filedir")
-                    data.outb = str.encode("|".join(files))
+                    if len(files) > 0:
+                        data.outb = "|".join(files).encode()
+                    else:
+                        data.outb = b"~No Files Currently~"
                 case "/register":
                     handle = parsed[1]
 
@@ -83,11 +93,30 @@ def handle_event(key, mask):
                 case "/store":
                     data.filename = parsed[1]
                     print(f"Store: {parsed[1]}")
+                    data.outb = b"SEND"
 
                 case "/get":
                     filename = parsed[1]
                     file_data = read_file(filename)
                     data.outb = file_data
+
+                case "/whisper":
+                    username = parsed[1]
+                    message = " ".join(parsed[2:])
+                    user = find_user(username)
+
+                    if user is None:
+                        data.outb = b"Error: User does not exist."
+                    else:
+                        user.fileobj.sendall(f"<WHISPER> {data.handle}: {message}".encode())
+                        data.outb = b"SUCCESS"
+                    
+                case "/broadcast":
+                    message = parsed[1]
+
+                    for val in sel.get_map().values():
+                        if val.data and val.data.handle != data.handle:
+                            val.fileobj.sendall(f"<BROADCAST> {data.handle}: {message}".encode())
         else:
             print(f"[SOCK] Closing connection from {data.addr}")
             sel.unregister(sock)
@@ -116,40 +145,26 @@ s.setblocking(False)
 sel.register(s, selectors.EVENT_READ, data=None)
 
 # Loop while the server is on
-try:
-    idle = False
-    print(f"Server listening on: {host}:{port}")
 
-    while not idle:
-        # Listen for events until timeout only
-        events = sel.select(timeout=15)
-        
-        # If timeout occurs, server goes idle
-        if not events:
-            idle = True
-            
-            while idle:
-                user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
-                match user:
-                    case "quit":
-                        print("Closing server...")
-                        sel.close()
-                        break
-                    case "listen":
-                        idle = False
-                    case _:
-                        print("Invalid input. Please try again.")
-        else:
-            # For every event, get the socket and the type of event, i.e. the mask
-            for key, mask in events:
-                # If data is None, we know this is from the listening socket because data=None
-                if key.data is None:
-                    register_client(key.fileobj)
-                else:
-                    handle_event(key, mask)
+idle = False
+print(f"Server listening on: {host}:{port}")
 
-except KeyboardInterrupt:
-    print("Keyboard Interrupt Detected. Closing server...")
-finally:
-    # Close all connections to the server and the server itself
-    sel.close()
+while True:
+    try:
+        # Listen for events
+        events = sel.select(timeout=5)
+
+        # For every event, get the socket and the type of event, i.e. the mask
+        for key, mask in events:
+            # If data is None, we know this is from the listening socket because data=None
+            if key.data is None:
+                register_client(key.fileobj)
+            else:
+                handle_event(key, mask)
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt Detected. Closing server...")
+        sel.close()
+        break
+    except ConnectionResetError as e:
+        print(e)
+        continue

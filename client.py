@@ -1,5 +1,8 @@
 import socket
 import os
+import selectors
+import sys, time, signal
+import threading
 from datetime import datetime
 
 class userConnection:
@@ -9,6 +12,8 @@ class userConnection:
         self.server_IP = None
         self.portNumber = None
         self.sock = None
+        self.chat = False
+        self.exit = False
 
     def check_error(self, connection=True, name=False):
         error = None
@@ -59,7 +64,7 @@ class userConnection:
             if len(chunk) < 4096:
                 break
 
-        print("File received from Server: {filename}")
+        print(f"File received from Server: {filename}")
         with open(filename, 'wb') as file:
             file.write(fileData)
 
@@ -75,9 +80,13 @@ class userConnection:
 
         with open(filename, 'rb') as file:
             fileData = file.read()
-            print(fileData)
             self.sock.sendall(f"/store {filename}".encode())
-            self.sock.sendall(fileData)
+            response = self.sock.recv(1024).decode()
+
+            if response == "SEND":
+                self.sock.sendall(fileData)
+            else:
+                print("Error: Unsuccessful in sending file")
 
             response = self.sock.recv(1024).decode()
             if response == "SUCCESS":
@@ -108,7 +117,9 @@ class userConnection:
             return
         
         try:
+            self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
+            self.userName = None
             self.connected = False
             print("Connection closed. Thank you!")
         except socket.error as e:
@@ -128,6 +139,30 @@ class userConnection:
         except socket.error as e:
             print("Error: Connection to the Server has failed! Please check IP Address and Port Number. ")
 
+    def toggle_chat(self):
+        self.chat = not self.chat
+        self.sock.sendall("/chat")
+
+    def broadcast(self, message):
+        error = self.check_error(name=True)
+        if error:
+            return
+        
+        self.sock.sendall(f"/broadcast {message}".encode())
+
+    def whisper(self, username, message):
+        error = self.check_error(name=True)
+        if error:
+            return
+        
+        self.sock.sendall(f"/whisper {username} {message}".encode())
+        response = self.sock.recv(1024).decode()
+
+        if response == "SUCCESS":
+            print(f"Whispered to {username}: {message}")
+        else:
+            print(response)
+        
     # Prints the commands and their functions
     def print_help(self):
         print("""
@@ -150,63 +185,98 @@ def is_params_valid(expected, observed):
 # Instantiate new client connection
 client = userConnection()
 
-while True:
-    try:
-        inp = input("> ")
-        parsed = inp.split(" ")
-        lenParams = len(parsed)
-        
-        match parsed[0]:
-            case '/join':
-                if client.connected:
-                    print("Error: You are already connected to a server. Disconnect first to join another one.")
-                    continue
-                if not is_params_valid(3, lenParams):
-                    continue
+# We need this for the multithreading to exit properly
+exitFlag = False
 
-                client.server_IP = parsed[1]
-                client.portNumber = int(parsed[2])
-                client.connect()
-            case '/leave':
-                if not is_params_valid(1, lenParams):
-                    continue
+def command_func():
+    while not exitFlag:
+        try:
+            inp = input("> ")
+            parsed = inp.split(" ")
+            lenParams = len(parsed)
+            
+            match parsed[0]:
+                case '/join':
+                    if client.connected:
+                        print("Error: You are already connected to a server. Disconnect first to join another one.")
+                        continue
+                    if not is_params_valid(3, lenParams):
+                        continue
 
+                    client.server_IP = parsed[1]
+                    client.portNumber = int(parsed[2])
+                    client.connect()
+                case '/leave':
+                    if not is_params_valid(1, lenParams):
+                        continue
+
+                    client.disconnect()
+                case '/register':
+                    if not is_params_valid(2, lenParams):
+                        continue
+
+                    client.register_alias(parsed[1])
+                case '/store':
+                    if not is_params_valid(2, lenParams):
+                        continue
+                    
+                    client.send_file(parsed[1])
+                case '/dir':
+                    if not is_params_valid(1, lenParams):
+                        continue
+
+                    client.fetch_dir()
+                case '/get':
+                    if not is_params_valid(2, lenParams):
+                        continue
+
+                    client.fetch_file(parsed[1])
+                case '/?':
+                    if not is_params_valid(1, lenParams):
+                        continue
+
+                    client.print_help()
+                case '/exit':
+                    print("See you on the flip side")
+                    client.disconnect()
+                    break
+                case '/broadcast':
+                    client.broadcast(parsed[1])
+                case '/whisper':
+                    if parsed[1] == client.userName:
+                        print("You can't whisper to yourself!")
+                    else:
+                        client.whisper(parsed[1], parsed[2])
+                case _:
+                    print("Error: Command not found")
+        except Exception as e:
+            if(client.connected):
                 client.disconnect()
-            case '/register':
-                if not is_params_valid(2, lenParams):
-                    continue
+            break
 
-                client.register_alias(parsed[1])
-            case '/store':
-                if not is_params_valid(2, lenParams):
-                    continue
-                
-                client.send_file(parsed[1])
-            case '/dir':
-                if not is_params_valid(1, lenParams):
-                    continue
+def chat_func():
+    while not exitFlag:
+        try:
+            if(client.connected):
+                message = client.sock.recv(1024, socket.MSG_PEEK).decode()
+                if message.startswith("<"):
+                    message = client.sock.recv(1024).decode()
+                    print(message + "\n> ", end="")
+        except:
+            break
 
-                client.fetch_dir()
-            case '/get':
-                if not is_params_valid(2, lenParams):
-                    continue
+chat_thread = threading.Thread(target=chat_func)
+chat_thread.start()
 
-                client.fetch_file(parsed[1])
-            case '/?':
-                if not is_params_valid(1, lenParams):
-                    continue
+command_thread = threading.Thread(target=command_func)
+command_thread.start()
 
-                client.print_help()
-            case '/exit':
-                print("See you on the flip side")
-                client.disconnect()
-                break
-            case _:
-                print("Error: Command not found")
-    except KeyboardInterrupt:
-        print("Closing client...")
-        client.disconnect()
-        break
-    except Exception as e:
-        print("Error: Something went wrong, disconnecting any active connection.")
-        client.disconnect()
+try:
+    while chat_thread.is_alive() or command_thread.is_alive():
+        time.sleep(1)
+except KeyboardInterrupt:
+    exitFlag = True
+    command_thread.join()
+    chat_thread.join()
+
+print("Goodbye!")
