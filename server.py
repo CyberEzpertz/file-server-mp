@@ -24,6 +24,13 @@ def read_file(filename):
     
     return data
 
+def find_user(username):
+    for val in sel.get_map().values():
+        if val is not None and val.data is not None and val.data.handle == username:
+            return val
+    
+    return None
+
 def register_client(sock):
     conn, addr = sock.accept()
     print(f"[SOCK] Connection accepted from: {addr}")
@@ -70,7 +77,10 @@ def handle_event(key, mask):
             match parsed[0]:
                 case "/dir":
                     files = os.listdir("./filedir")
-                    data.outb = str.encode("|".join(files))
+                    if len(files) > 0:
+                        data.outb = "|".join(files).encode()
+                    else:
+                        data.outb = b"~No Files Currently~"
                 case "/register":
                     handle = parsed[1]
 
@@ -83,11 +93,35 @@ def handle_event(key, mask):
                 case "/store":
                     data.filename = parsed[1]
                     print(f"Store: {parsed[1]}")
+                    data.outb = b"SEND"
 
                 case "/get":
                     filename = parsed[1]
                     file_data = read_file(filename)
                     data.outb = file_data
+
+                # case "/chat":
+                #     data.chat = not data.chat
+
+                case "/whisper":
+                    username = parsed[1]
+                    message = " ".join(parsed[2:])
+                    user = find_user(username)
+
+                    if user is None:
+                        data.outb = "Error: User does not exist."
+                    # elif not user.data.chat:
+                    #     data.outb = "Error: User is not open to chatting right now."
+                    else:
+                        user.fileobj.sendall(f"<{data.handle}> Whispered: {message}".encode())
+                        data.outb = "SUCCESS"
+                    
+                case "/broadcast":
+                    message = parsed[1]
+
+                    for val in sel.get_map().values():
+                        if val.data:
+                            val.fileobj.sendall(f"<{data.handle}> Broadcasted: {message}".encode())
         else:
             print(f"[SOCK] Closing connection from {data.addr}")
             sel.unregister(sock)
