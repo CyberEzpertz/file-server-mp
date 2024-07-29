@@ -109,12 +109,10 @@ def handle_event(key, mask):
                     user = find_user(username)
 
                     if user is None:
-                        data.outb = "Error: User does not exist."
-                    # elif not user.data.chat:
-                    #     data.outb = "Error: User is not open to chatting right now."
+                        data.outb = b"Error: User does not exist."
                     else:
-                        user.fileobj.sendall(f"<{data.handle}> Whispered: {message}".encode())
-                        data.outb = "SUCCESS"
+                        user.fileobj.sendall(f"<WHISPER> {data.handle}: {message}".encode())
+                        data.outb = b"SUCCESS"
                     
                 case "/broadcast":
                     message = parsed[1]
@@ -150,40 +148,28 @@ s.setblocking(False)
 sel.register(s, selectors.EVENT_READ, data=None)
 
 # Loop while the server is on
-try:
-    idle = False
-    print(f"Server listening on: {host}:{port}")
 
-    while not idle:
-        # Listen for events until timeout only
-        events = sel.select(timeout=15)
+idle = False
+print(f"Server listening on: {host}:{port}")
+
+while True:
+    try:
+        # Listen for events
+        events = sel.select(timeout=5)
+
+        # For every event, get the socket and the type of event, i.e. the mask
+        for key, mask in events:
+            # If data is None, we know this is from the listening socket because data=None
+            if key.data is None:
+                register_client(key.fileobj)
+            else:
+                handle_event(key, mask)
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt Detected. Closing server...")
+        sel.close()
+        break
+    except ConnectionResetError:
+        continue
         
-        # If timeout occurs, server goes idle
-        if not events:
-            idle = True
-            
-            while idle:
-                user = input("> Server currently idle, type 'quit' to quit or 'listen' to continue\n")
-                match user:
-                    case "quit":
-                        print("Closing server...")
-                        sel.close()
-                        break
-                    case "listen":
-                        idle = False
-                    case _:
-                        print("Invalid input. Please try again.")
-        else:
-            # For every event, get the socket and the type of event, i.e. the mask
-            for key, mask in events:
-                # If data is None, we know this is from the listening socket because data=None
-                if key.data is None:
-                    register_client(key.fileobj)
-                else:
-                    handle_event(key, mask)
 
-except KeyboardInterrupt:
-    print("Keyboard Interrupt Detected. Closing server...")
-finally:
-    # Close all connections to the server and the server itself
-    sel.close()
+sel.close()

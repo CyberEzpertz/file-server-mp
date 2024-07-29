@@ -1,7 +1,7 @@
 import socket
 import os
 import selectors
-import sys
+import sys, time, signal
 import threading
 from datetime import datetime
 
@@ -13,6 +13,7 @@ class userConnection:
         self.portNumber = None
         self.sock = None
         self.chat = False
+        self.exit = False
 
     def check_error(self, connection=True, name=False):
         error = None
@@ -183,8 +184,11 @@ def is_params_valid(expected, observed):
 client = userConnection()
 sel = selectors.DefaultSelector()
 
+# We need this for the multithreading to exit properly
+exitFlag = False
+
 def command_func():
-    while True:
+    while not exitFlag:
         try:
             # if client.chat:
             #     sel.register(client.sock, selectors.EVENT_READ, data=None)
@@ -252,36 +256,24 @@ def command_func():
                     break
                 case '/broadcast':
                     client.broadcast(parsed[1])
+                case '/whisper':
+                    client.whisper(parsed[1], parsed[2])
                 case _:
                     print("Error: Command not found")
-
-        except KeyboardInterrupt:
-            print("Closing client...")
-            if(client.connected):
-                client.disconnect()
-                
-            break
         except Exception as e:
-            print("Error: Something went wrong, disconnecting any active connection.")
             if(client.connected):
                 client.disconnect()
-                
             break
 
 def chat_func():
-    while True:
+    while not exitFlag:
         try:
             if(client.connected):
                 message = client.sock.recv(1024, socket.MSG_PEEK).decode()
-                print("Reading")
                 if message.startswith("<"):
                     message = client.sock.recv(1024).decode()
-                    print(message)
-
-        except Exception as e:
-            print("Error: Something went wrong")
-            print(e)
-            client.disconnect()
+                    print(message + "\n> ", end="")
+        except:
             break
 
 chat_thread = threading.Thread(target=chat_func)
@@ -289,3 +281,13 @@ chat_thread.start()
 
 command_thread = threading.Thread(target=command_func)
 command_thread.start()
+
+try:
+    while chat_thread.is_alive() or command_thread.is_alive():
+        time.sleep(1)
+except KeyboardInterrupt:
+    exitFlag = True
+    command_thread.join()
+    chat_thread.join()
+
+print("Goodbye!")
