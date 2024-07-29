@@ -3,6 +3,7 @@ import selectors
 import types
 import os
 
+
 def is_handle_taken(name):
     for key in sel.get_map().values():
         if key is not None and key.data is not None and key.data.handle == name:
@@ -46,8 +47,23 @@ def handle_event(key, mask):
     if mask & selectors.EVENT_READ:
         # Get data from the client
         received = sock.recv(4096)
+
         if received and data.filename:
+            print("HERE")
             data.inb += received
+
+            if len(received) < 4096:
+                try:
+                    print(f"[WRITE] Writing file data for {data.filename}")
+                    write_file(data)
+
+                    # Reset the inbound data and the filename
+                    data.inb = b""
+                    data.filename = ""
+                    sock.sendall(b"SUCCESS")
+                except:
+                    sock.sendall(b"ERROR")
+
         elif received:
             print(f"[READ] Reading from client address {data.addr}")
             parsed = received.decode().split(" ")
@@ -67,6 +83,8 @@ def handle_event(key, mask):
 
                 case "/store":
                     data.filename = parsed[1]
+                    print(f"Store: {parsed[1]}")
+
                 case "/get":
                     filename = parsed[1]
                     file_data = read_file(filename)
@@ -82,17 +100,6 @@ def handle_event(key, mask):
         sock.sendall(data.outb)
         data.outb = ""
 
-    if data.filename:
-        try:
-            print(f"[READ] Writing file data for {data.filename}")
-            write_file(data)
-
-            # Reset the inbound data and the filename
-            data.inb = ""
-            data.filename = ""
-            sock.sendall(b"SUCCESS")
-        except:
-            sock.sendall(b"ERROR")
 
 # To enable multiple clients to connect to the server
 sel = selectors.DefaultSelector()

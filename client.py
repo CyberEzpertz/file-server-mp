@@ -77,10 +77,11 @@ class userConnection:
 
         with open(filename, 'rb') as file:
             fileData = file.read()
+            print(fileData)
             self.sock.sendall(f"/store {filename}".encode())
             self.sock.sendall(fileData)
-            response = self.sock.recv(1024).decode()
 
+            response = self.sock.recv(1024).decode()
             if response == "SUCCESS":
                 time = datetime.now()
                 print(f"{self.userName} {time}: Uploaded {filename}")
