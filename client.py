@@ -13,9 +13,12 @@ class userConnection:
 
     def check_error(self, connection=True, name=False):
         error = None
-
         if connection and not self.connected:
             error = "Error: Not currently connected to a server."
+        elif len(self.sock.recv(1024)) == 0:
+            error = "Error: Server Connection has been severed. Try reconnecting or opening the server again."
+            self.connected = False
+            self.sock.close()
         elif name and not self.userName:
             error = "Error: You are currently unregistered, please register before running any action."
 
