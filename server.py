@@ -134,7 +134,7 @@ sel = selectors.DefaultSelector()
 
 # Initialize the server socket object
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host, port  = socket.gethostname(), 12345
+host, port  = "127.0.0.1", 12345
 
 # Open up the server socket for incoming connections
 s.bind((host, port))
