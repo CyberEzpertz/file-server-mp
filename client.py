@@ -1,7 +1,6 @@
 import socket
 import os
-import selectors
-import sys, time, signal
+import time
 import threading
 from datetime import datetime
 
@@ -12,8 +11,6 @@ class userConnection:
         self.server_IP = None
         self.portNumber = None
         self.sock = None
-        self.chat = False
-        self.exit = False
 
     def check_error(self, connection=True, name=False):
         error = None
@@ -29,8 +26,7 @@ class userConnection:
         
     # Fetches a file from the server using a file name
     def fetch_dir(self):
-        error = self.check_error(name=True)
-        if error:
+        if self.check_error(name=True):
             return
       
         self.sock.sendall(b"/dir")
@@ -47,8 +43,7 @@ class userConnection:
 
     # Fetches a file from the server using a file name
     def fetch_file(self, filename):
-        error = self.check_error(name=True)
-        if error:
+        if self.check_error(name=True):
             return
     
         if not os.path.exists("filedir/" + filename):
@@ -70,8 +65,7 @@ class userConnection:
 
     # Sends a file to the server using the current client alias
     def send_file(self, filename):
-        error = self.check_error(name=True)
-        if error:
+        if self.check_error(name=True):
             return
     
         if not os.path.exists(filename):
@@ -97,8 +91,7 @@ class userConnection:
 
     # registers the User
     def register_alias(self, user):
-        error = self.check_error()
-        if error:
+        if self.check_error():
             return
         
         self.sock.sendall(f"/register {user}".encode())
@@ -139,20 +132,14 @@ class userConnection:
         except socket.error as e:
             print("Error: Connection to the Server has failed! Please check IP Address and Port Number. ")
 
-    def toggle_chat(self):
-        self.chat = not self.chat
-        self.sock.sendall("/chat")
-
     def broadcast(self, message):
-        error = self.check_error(name=True)
-        if error:
+        if self.check_error(name=True):
             return
         
         self.sock.sendall(f"/broadcast {message}".encode())
 
     def whisper(self, username, message):
-        error = self.check_error(name=True)
-        if error:
+        if self.check_error(name=True):
             return
         
         self.sock.sendall(f"/whisper {username} {message}".encode())
