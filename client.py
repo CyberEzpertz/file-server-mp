@@ -161,6 +161,8 @@ class userConnection:
             /dir - requests a list of file names stored with the server
             /get <filename> - requests the specific file from the directory of the server
             /? - gets all input syntax commands shown above for reference
+            /broadcast <message> - sends message to every connected client
+            /whisper <handle> <message> - sends message to specific user/client  
             """)
 
 def is_params_valid(expected, observed):
