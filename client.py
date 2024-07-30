@@ -241,12 +241,12 @@ def command_func():
                     client.disconnect()
                     break
                 case '/broadcast':
-                    client.broadcast(parsed[1])
+                    client.broadcast(" ".join(parsed[1:]))
                 case '/whisper':
                     if parsed[1] == client.userName:
                         print("You can't whisper to yourself!")
                     else:
-                        client.whisper(parsed[1], parsed[2])
+                        client.whisper(parsed[1], " ".join(parsed[2:]))
                 case _:
                     print("Error: Command not found")
         except ConnectionError:

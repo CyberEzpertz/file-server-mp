@@ -14,7 +14,7 @@ def is_handle_taken(name):
 def write_file(data):
     filename = "filedir/" + data.filename
     print(f"[write_file] Writing into {filename}")
-    
+
     # Write into the file
     with open(filename, "wb") as file:
         file.write(data.inb)
@@ -115,7 +115,7 @@ def handle_event(key, mask):
                         data.outb = b"SUCCESS"
                     
                 case "/broadcast":
-                    message = parsed[1]
+                    message = " ".join(parsed[1:])
 
                     for val in sel.get_map().values():
                         if val.data and val.data.handle != data.handle:
