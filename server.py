@@ -13,10 +13,13 @@ def is_handle_taken(name):
 
 def write_file(data):
     filename = "filedir/" + data.filename
-
+    print(f"[write_file] Writing into {filename}")
+    
     # Write into the file
     with open(filename, "wb") as file:
         file.write(data.inb)
+
+    print(f"[write_file] Finished writing {filename}")
 
 def read_file(filename):
     with open("filedir/" + filename, "rb") as file:
