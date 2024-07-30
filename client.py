@@ -249,7 +249,7 @@ def command_func():
                         client.whisper(parsed[1], parsed[2])
                 case _:
                     print("Error: Command not found")
-        except ConnectionAbortedError:
+        except ConnectionError:
             print("Error: Server has been shutdown, severing the connection.")
             client.disconnect()
         except Exception as e:
